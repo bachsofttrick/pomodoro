@@ -313,7 +313,7 @@
       intervalId = setInterval(() => {
         secondsLeft--;
         updateDisplay();
-        if (isWork && secondsLeft === 10) {
+        if (secondsLeft === 10) {
           alarm.play().catch(() => {});
         }
         if (secondsLeft <= 0) {
