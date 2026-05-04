@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pomodoro Timer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.5s ease;
+    }
+
+    body.work {
+      background-color: #5babc8;
+    }
+
+    body.break {
+      background-color: #5cb87e;
+    }
+
+    .mode-label {
+      font-size: clamp(0.8rem, 2.5vw, 1rem);
+      font-weight: 600;
+      letter-spacing: 0.25em;
+      color: white;
+      margin-bottom: clamp(0.75rem, 2vw, 1.5rem);
+    }
+
+    .timer {
+      font-size: clamp(5rem, 28vw, 13rem);
+      font-weight: 300;
+      color: white;
+      letter-spacing: 0.05em;
+      line-height: 1;
+      margin-bottom: clamp(2rem, 6vw, 4rem);
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(1rem, 3vw, 1.75rem);
+    }
+
+    .toggle-btn {
+      width: clamp(3rem, 10vw, 4rem);
+      height: clamp(3rem, 10vw, 4rem);
+      background: rgba(255, 255, 255, 0.25);
+      border: 2px solid rgba(255, 255, 255, 0.5);
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .toggle-btn:hover {
+      background: rgba(255, 255, 255, 0.35);
+    }
+
+    .play-icon {
+      width: 0;
+      height: 0;
+      border-top: clamp(0.55rem, 1.8vw, 0.75rem) solid transparent;
+      border-bottom: clamp(0.55rem, 1.8vw, 0.75rem) solid transparent;
+      border-left: clamp(0.9rem, 3vw, 1.2rem) solid white;
+      margin-left: 15%;
+    }
+
+    .stop-icon {
+      width: clamp(0.9rem, 3vw, 1.2rem);
+      height: clamp(0.9rem, 3vw, 1.2rem);
+      background: white;
+      border-radius: 2px;
+    }
+
+    .settings-btn {
+      position: fixed;
+      top: clamp(0.75rem, 3vw, 1.25rem);
+      right: clamp(0.75rem, 3vw, 1.25rem);
+      background: none;
+      border: none;
+      cursor: pointer;
+      opacity: 0.6;
+      padding: 0.25rem;
+      transition: opacity 0.2s;
+    }
+
+    .settings-btn:hover {
+      opacity: 1;
+    }
+
+    .settings-btn svg {
+      width: clamp(1.4rem, 4vw, 1.8rem);
+      height: clamp(1.4rem, 4vw, 1.8rem);
+      fill: white;
+      display: block;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 10px;
+      padding: 2rem;
+      width: min(88vw, 320px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      color: #333;
+      margin-bottom: 1.5rem;
+      text-transform: uppercase;
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .setting-row label {
+      color: #555;
+      font-size: 0.9rem;
+    }
+
+    .setting-row input {
+      width: 4rem;
+      padding: 0.4rem 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      text-align: center;
+      font-size: 1rem;
+      color: #333;
+    }
+
+    .setting-row input:focus {
+      outline: none;
+      border-color: #5babc8;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.75rem;
+      justify-content: flex-end;
+    }
+
+    .btn {
+      padding: 0.5rem 1.25rem;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: opacity 0.15s;
+    }
+
+    .btn:hover {
+      opacity: 0.85;
+    }
+
+    .btn-primary {
+      background: #5babc8;
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #eee;
+      color: #555;
+    }
+  </style>
+</head>
+<body class="work">
+
+  <div class="mode-label" id="modeLabel">WORK</div>
+  <div class="timer" id="timerDisplay">25 : 00</div>
+
+  <div class="controls">
+    <button class="toggle-btn" id="toggleBtn" aria-label="Start/Stop">
+      <div class="play-icon" id="btnIcon"></div>
+    </button>
+  </div>
+
+  <button class="settings-btn" id="settingsBtn" aria-label="Settings">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.92c.04-.34.07-.69.07-1.08s-.03-.74-.07-1.08l2.32-1.82a.55.55 0 0 0 .13-.71l-2.2-3.81a.55.55 0 0 0-.67-.24l-2.73 1.1c-.57-.44-1.18-.81-1.86-1.09L14 2.42A.54.54 0 0 0 13.46 2h-4.4a.54.54 0 0 0-.54.46L8.2 5.35C7.52 5.63 6.9 6 6.34 6.44L3.61 5.34a.55.55 0 0 0-.67.24L.74 9.39a.54.54 0 0 0 .13.71l2.32 1.82c-.04.34-.07.69-.07 1.08s.03.74.07 1.08L.87 15.9a.55.55 0 0 0-.13.71l2.2 3.81c.15.26.47.35.73.24l2.73-1.1c.57.44 1.18.81 1.86 1.09l.42 2.93c.05.26.27.46.54.46h4.4c.27 0 .49-.2.54-.46l.42-2.93c.68-.28 1.3-.65 1.86-1.09l2.73 1.1c.26.11.58.02.73-.24l2.2-3.81a.54.54 0 0 0-.13-.71l-2.32-1.82z"/>
+    </svg>
+  </button>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <h2>Settings</h2>
+      <div class="setting-row">
+        <label for="workInput">Work (minutes)</label>
+        <input type="number" id="workInput" min="1" max="99" value="25">
+      </div>
+      <div class="setting-row">
+        <label for="breakInput">Break (minutes)</label>
+        <input type="number" id="breakInput" min="1" max="99" value="5">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="resetBtn">Reset</button>
+        <button class="btn btn-primary" id="okBtn">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULT_WORK = 25;
+    const DEFAULT_BREAK = 5;
+    const STORAGE_KEY = 'pomodoro-time';
+
+    let workMinutes = DEFAULT_WORK;
+    let breakMinutes = DEFAULT_BREAK;
+    let isWork = true;
+    let isRunning = false;
+    let secondsLeft = 0;
+    let intervalId = null;
+
+    const bodyEl = document.body;
+    const modeLabel = document.getElementById('modeLabel');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const toggleBtn = document.getElementById('toggleBtn');
+    const btnIcon = document.getElementById('btnIcon');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const modalOverlay = document.getElementById('modalOverlay');
+    const workInput = document.getElementById('workInput');
+    const breakInput = document.getElementById('breakInput');
+    const resetBtn = document.getElementById('resetBtn');
+    const okBtn = document.getElementById('okBtn');
+
+    const alarm = new Audio('alarm.mp3');
+
+    function loadSettings() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parts = saved.split('/');
+        if (parts.length === 2) {
+          const w = parseInt(parts[0]);
+          const b = parseInt(parts[1]);
+          if (w > 0) workMinutes = w;
+          if (b > 0) breakMinutes = b;
+        }
+      }
+    }
+
+    function saveSettings() {
+      localStorage.setItem(STORAGE_KEY, `${workMinutes}/${breakMinutes}`);
+    }
+
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${m} : ${s.toString().padStart(2, '0')}`;
+    }
+
+    function updateDisplay() {
+      timerDisplay.textContent = formatTime(secondsLeft);
+      modeLabel.textContent = isWork ? 'WORK' : 'BREAK';
+      bodyEl.className = isWork ? 'work' : 'break';
+    }
+
+    function setStoppedState() {
+      isRunning = false;
+      btnIcon.className = 'play-icon';
+    }
+
+    function setRunningState() {
+      isRunning = true;
+      btnIcon.className = 'stop-icon';
+    }
+
+    function resetTimer() {
+      clearInterval(intervalId);
+      secondsLeft = (isWork ? workMinutes : breakMinutes) * 60;
+      setStoppedState();
+      updateDisplay();
+    }
+
+    function startCountdown() {
+      setRunningState();
+      intervalId = setInterval(() => {
+        secondsLeft--;
+        updateDisplay();
+        if (isWork && secondsLeft === 10) {
+          alarm.play().catch(() => {});
+        }
+        if (secondsLeft <= 0) {
+          clearInterval(intervalId);
+          isWork = !isWork;
+          secondsLeft = (isWork ? workMinutes : breakMinutes) * 60;
+          updateDisplay();
+          startCountdown();
+        }
+      }, 1000);
+    }
+
+    toggleBtn.addEventListener('click', () => {
+      if (isRunning) {
+        clearInterval(intervalId);
+        setStoppedState();
+      } else {
+        startCountdown();
+      }
+    });
+
+    settingsBtn.addEventListener('click', () => {
+      workInput.value = workMinutes;
+      breakInput.value = breakMinutes;
+      modalOverlay.classList.add('open');
+    });
+
+    modalOverlay.addEventListener('click', (e) => {
+      if (e.target === modalOverlay) {
+        modalOverlay.classList.remove('open');
+      }
+    });
+
+    okBtn.addEventListener('click', () => {
+      const newWork = parseInt(workInput.value);
+      const newBreak = parseInt(breakInput.value);
+      if (newWork > 0 && newBreak > 0) {
+        workMinutes = newWork;
+        breakMinutes = newBreak;
+        saveSettings();
+        isWork = true;
+        resetTimer();
+        modalOverlay.classList.remove('open');
+      }
+    });
+
+    resetBtn.addEventListener('click', () => {
+      workInput.value = DEFAULT_WORK;
+      breakInput.value = DEFAULT_BREAK;
+    });
+
+    loadSettings();
+    resetTimer();
+  </script>
+</body>
+</html>
